@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AFORE Savings Calculator</title>
+  <meta charset="utf-8">
+  <meta name="description" content="AFORE Savings Calculator">
+  <meta name="author" content="Carlos Martinez-Torteya">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>AFORE Savings Calculator</h1>
+    <h2>A Shiny app for estimating savings yields in Mexico</h2>
+    <p>Carlos Martinez-Torteya<br/></p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>AFOREs</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>AFOREs (Retirement Funds Administrators), are the centerpiece of Mexico&#39;s Retirement Savings System</li>
+<li>They are private companies (typically part of larger financial or insurance institutions) that offer heavily regulated accounts where workers invest their retirement fund.</li>
+<li>Each one can choose the AFORE they want to join, but it is mandatory to have one.</li>
+<li>The retirement funds can only be accesed upon retirement. AFOREs invest the money both in the Mexican Stock Exchange exclusively</li>
+<li>Given that the money will only be accessed upon retirment, which may be dramatically closer/further away depending on worker age, AFOREs are broken up into 4 age brackets (18-36, 36-45, 46-55, 56-65). The closest one is to retirement age (65 years), the less risk the Siefore is allowed to take on.</li>
+<li>Each AFORE company chooses their investment strategy (within the regulations)</li>
+<li>Very different yields depending on company and worker age!</li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-2" style="background:;">
+  <hgroup>
+    <h2>The Data</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>The data used in this app was taken directly from CONSAR (National Comission for Retirement Savings System), who publishes the net yields for all the Siefores periodically</li>
+<li>Since this is a proof-of-concept app more than a ready-for-consumption one, we only used the latest data (Date Pulled: Jan/25/2015), not the full historical data</li>
+</ul>
+
+<pre><code class="r">AforeData &lt;- read.csv(&quot;AforeData.csv&quot;)
+head(AforeData)
+</code></pre>
+
+<pre><code>##     AFORE Rend.Neto.SB4 Rend.Neto.SB3 Rend.Neto.SB2 Rend.Neto.SB1
+## 1  Azteca        0.0851        0.0815        0.0718        0.0594
+## 2 Banamex        0.1122        0.0990        0.0894        0.0703
+## 3 Banorte        0.1011        0.0929        0.0846        0.0664
+## 4  Coppel        0.0785        0.0759        0.0698        0.0543
+## 5     GNP        0.1106        0.0969        0.0880        0.0727
+## 6 Inbursa        0.0620        0.0572        0.0504        0.0487
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-3" style="background:;">
+  <hgroup>
+    <h2>The UI</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>The only information asked for is: Age and AFORE (company)</li>
+<li>The UI displays the values entered as well as the yield-upon-retirement (per MX Peso)</li>
+</ul>
+
+<p>Some sample code:</p>
+
+<pre><code>sidebarPanel(
+               numericInput(&#39;age&#39;, &#39;Age (years)&#39;, 40, min = 18, max = 64, step = 1),
+               selectInput(&#39;afore&#39;, &quot;Choose your AFORE:&quot;, choices = c(&#39;Azteca&#39;=1 [...]
+               submitButton(&#39;Submit&#39;)
+          ), [...]
+mainPanel(
+[...]
+h4(&#39;For each MXN (MX Peso) in your AFORE account today, you will have: &#39;),
+               verbatimTextOutput(&quot;savings&quot;),
+               [...]
+)
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="" id="slide-4" style="background:;">
+  <hgroup>
+    <h2>The Server</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li>Calculation of net yield (per Peso invested today) depends on worker age and AFORE</li>
+</ul>
+
+<p>Sample Code:</p>
+
+<pre><code>AforeData &lt;- read.csv(&quot;AforeData.csv&quot;)
+AgeBrackets &lt;- c(36, 45, 59, 65)
+
+Savings &lt;- function(age,afore) {
+     if (age&lt;AgeBrackets[1]) {
+          (1+AforeData[afore,2])^(AgeBrackets[1]-age)
+          +(1+AforeData[afore,3])^(AgeBrackets[2]-AgeBrackets[1])[...]
+     }
+     else if(age&lt;AgeBrackets[2]){
+          (1+AforeData[afore,3])^(AgeBrackets[2]-age)
+          +(1+AforeData[afore,4])^(AgeBrackets[3]-AgeBrackets[2])+[...]
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='AFOREs'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='The Data'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='The UI'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='The Server'>
+         4
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- MathJax: Fall back to local if CDN offline but local image fonts are not supported (saves >100MB) -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [['$','$'], ['\\(','\\)']],
+        processEscapes: true
+      }
+    });
+  </script>
+  <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  <!-- <script src="https://c328740.ssl.cf1.rackcdn.com/mathjax/2.0-latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script> -->
+  <script>window.MathJax || document.write('<script type="text/x-mathjax-config">MathJax.Hub.Config({"HTML-CSS":{imageFont:null}});<\/script><script src="libraries/widgets/mathjax/MathJax.js?config=TeX-AMS-MML_HTMLorMML"><\/script>')
+</script>
+<!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
